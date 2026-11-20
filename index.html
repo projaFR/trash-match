@@ -118,7 +118,25 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--yel);outline-of
 .pseudo{font:600 22px Nunito,sans-serif;padding:12px 16px;border-radius:16px;border:0;min-height:56px;width:min(360px,100%);text-align:center;margin:8px 0 16px;color:var(--ink)}
 .res .hb{width:110px;height:110px}.gain{font:700 64px Fredoka;color:var(--yel)}.rank{font:600 26px Fredoka;color:#fff!important}
 .res.good{}.res.bad h2{color:#ffd2dd}
+#hdbg{display:none}
 .dbg{display:inline-block;margin-top:10px;font:600 13px/1.4 ui-monospace,monospace;color:#bcd6c9;opacity:.85;word-break:break-word}
+.av{display:inline-grid;place-items:center;width:44px;height:44px;border-radius:50%;flex:none;overflow:hidden;border:3px solid #fff;box-shadow:0 3px 0 rgba(0,0,0,.2)}
+.av svg{width:120%;height:120%;margin-top:6%}
+.avbig{width:96px;height:96px}.avs{width:28px;height:28px;border-width:2px;box-shadow:none}
+.nick{display:inline-flex;align-items:center;gap:10px;padding:6px 18px 6px 6px}
+.rk .av{width:48px;height:48px}
+.pod .avbig{width:110px;height:110px}
+.pme{display:inline-flex;align-items:center;gap:8px;padding:4px 14px 4px 4px}
+.join form{display:flex;flex-direction:column;align-items:center;gap:10px;width:min(420px,100%)}
+.me{margin:4px 0}
+.lbl{font:600 17px Fredoka;color:var(--yel);align-self:flex-start}
+.avpick{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;width:100%}
+.avb{aspect-ratio:1;background:rgba(255,255,255,.12);border-radius:16px;padding:2px;border:3px solid transparent;min-height:44px}
+.avb svg{width:100%;height:100%}.avb.sel{border-color:var(--yel);background:rgba(255,255,255,.25)}
+.colpick{display:flex;gap:10px;flex-wrap:wrap;align-self:flex-start}
+.colb{width:44px;height:44px;border-radius:50%;border:3px solid transparent}.colb.sel{border-color:#fff;outline:3px solid var(--yel)}
+.net{background:rgba(255,207,51,.15);border:2px solid var(--yel);border-radius:16px;padding:10px 16px;color:#fff;font-size:18px;margin:4px 0 0}
+.net.small{font-size:15px;margin:6px 0}
 #lost,#toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--pink);color:#fff;border-radius:99px;padding:10px 18px;font-weight:800;z-index:9}
 #toast{opacity:0;transition:opacity .3s}#toast.on{opacity:1}
 @media(max-width:860px){.hero,.lobby,.stage{grid-template-columns:minmax(0,1fr)}.pic{aspect-ratio:1.6}.gallery{max-width:420px}}
@@ -2530,6 +2548,10 @@ function optsOf(q){
 }
 const goodLabel=q=>optsOf(q).find(o=>o.v===String(q.ans)).label;
 const artOf=q=>Array.isArray(q.arg)?ART[q.a](...q.arg):ART[q.a](q.arg);
+const AVS=['pizza','yaourt','tube','banane','bouteille','pile','gobelets','capsule','cereales','bocal','sac','trophee'];
+const AVC=['#ffcf33','#ff8fab','#7cc4ff','#8be0a4','#c9a7ff','#ffb347'];
+const avOk=a=>a&&AVS.includes(a.k)&&Number.isInteger(a.c)&&a.c>=0&&a.c<AVC.length?{k:a.k,c:a.c}:{k:'yaourt',c:0};
+const avatar=(a,cls='')=>{a=avOk(a);return `<span class="av ${cls}" style="background:${AVC[a.c]}">${ART[a.k]()}</span>`};
 const T={1:'#fff3c4',2:'#ffe0e8',3:'#dff0ff',4:'#e6f7ec',5:'#fff3c4'};
 const logo=`<div class="logo">${ART.heart()}Trash Match</div>`;
 const store={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}};
@@ -2566,7 +2588,7 @@ function hostData(c,d){
   const nick=String(d.nick||'').replace(/\s+/g,' ').trim().slice(0,20)||'Anonyme';
   let p=H.players.get(pid);
   if(!p){p={pid,nick,score:0,ans:{},res:null,prev:0};H.players.set(pid,p)}
-  p.nick=nick;p.conn=c;c.pid=pid;send(p,stateFor(p));
+  p.nick=nick;p.av=avOk(d.av);p.conn=c;c.pid=pid;send(p,stateFor(p));
   if(H.phase==='lobby')lobby();else hostCount();return;
  }
  if(d.t==='ans'){
@@ -2596,9 +2618,9 @@ function lobby(){
  H.phase='lobby';
  const url=location.origin+location.pathname+'?p='+H.code;
  const ps=[...H.players.values()];
- app.innerHTML=`<section class="lobby"><div class="lq">${logo}<h1>Scannez pour jouer</h1><div class="qr">${qrSvg(url)}</div><p class="url">ou allez sur <b>${esc(location.host+location.pathname)}</b><br>code <b class="code">${H.code}</b></p></div>
+ app.innerHTML=`<section class="lobby"><div class="lq">${logo}<h1>Scannez pour jouer</h1><div class="qr">${qrSvg(url)}</div><p class="url">ou allez sur <b>${esc(location.host+location.pathname)}</b><br>code <b class="code">${H.code}</b></p><p class="net"><b>Coupez le wifi</b> et jouez en 4G ou 5G avant de scanner.</p></div>
  <div class="lp"><div class="lh"><h2>${ps.length?ps.length+' joueur'+(ps.length>1?'s':'')+' dans la salle':'En attente des joueurs…'}</h2><button class="big" id="go" ${ps.length?'':'disabled'}>Lancer la partie</button></div>
- <p class="dbg" id="hdbg"></p><div class="chips">${ps.map(p=>`<span class="nick${p.conn&&p.conn.open?'':' off'}">${esc(p.nick)}</span>`).join('')||'<p class="hint">Les pseudos apparaîtront ici dès que les téléphones se connectent.</p>'}</div></div></section>`;
+ <p class="dbg" id="hdbg"></p><div class="chips">${ps.map(p=>`<span class="nick${p.conn&&p.conn.open?'':' off'}">${avatar(p.av)}${esc(p.nick)}</span>`).join('')||'<p class="hint">Les pseudos apparaîtront ici dès que les téléphones se connectent.</p>'}</div></div></section>`;
  const go=$('#go');if(go)go.onclick=()=>{H.i=0;step()};
 }
 function step(){if(H.i>=Q.length)return finish();const q=Q[H.i];if(H.i===0||Q[H.i-1].m!==q.m)inter();else question()}
@@ -2631,13 +2653,13 @@ function reveal(){
 }
 function board(){
  H.phase='board';const r=ranked().slice(0,5),last=H.i===Q.length-1;
- app.innerHTML=hostHead()+`<section class="board"><h2>Classement</h2><div class="rows">${r.map((p,k)=>`<div class="rk"><span class="pos">${k+1}</span><span class="nm">${esc(p.nick)}</span>${p.last?`<span class="gn">+${p.last}</span>`:''}<span class="sc">${p.score}</span></div>`).join('')||'<p class="hint">Aucun joueur.</p>'}</div><button class="big" id="nx">${last?'Voir le podium':'Question suivante'}</button></section>`;
+ app.innerHTML=hostHead()+`<section class="board"><h2>Classement</h2><div class="rows">${r.map((p,k)=>`<div class="rk"><span class="pos">${k+1}</span>${avatar(p.av)}<span class="nm">${esc(p.nick)}</span>${p.last?`<span class="gn">+${p.last}</span>`:''}<span class="sc">${p.score}</span></div>`).join('')||'<p class="hint">Aucun joueur.</p>'}</div><button class="big" id="nx">${last?'Voir le podium':'Question suivante'}</button></section>`;
  hostCount();$('#nx').onclick=()=>{H.i++;step()};
 }
 function endRes(p){const r=ranked();return{score:p.score,rank:r.indexOf(p)+1,total:r.length}}
 function finish(){
  H.phase='end';bc(stateFor);const r=ranked();const pod=[r[1],r[0],r[2]];
- app.innerHTML=hostHead()+`<section class="board"><h2>Le grand mariage est célébré !</h2><div class="podium">${pod.map((p,k)=>p?`<div class="pod p${[2,1,3][k]}"><span class="nm">${esc(p.nick)}</span><span class="sc">${p.score} pts</span><div class="blk">${[2,1,3][k]}</div></div>`:'<div></div>').join('')}</div>
+ app.innerHTML=hostHead()+`<section class="board"><h2>Le grand mariage est célébré !</h2><div class="podium">${pod.map((p,k)=>p?`<div class="pod p${[2,1,3][k]}">${avatar(p.av,'avbig')}<span class="nm">${esc(p.nick)}</span><span class="sc">${p.score} pts</span><div class="blk">${[2,1,3][k]}</div></div>`:'<div></div>').join('')}</div>
  <p class="hint">${r[0]?esc(r[0].nick)+' est sacré·e Cupidon du tri.':''} Dans le doute chez vous : l’appli Guide du tri de Citeo donne les consignes de votre commune.</p></section>`;
  hostCount();
 }
@@ -2647,8 +2669,21 @@ function toast(t){let e=$('#toast');if(!e){e=document.createElement('div');e.id=
 const P={peer:null,conn:null,code:'',nick:'',pid:'',tick:null,timer:null,last:null,ok:false};
 function joinForm(code){
  P.code=code;
- app.innerHTML=`<section class="center">${logo}<h2>Ton pseudo</h2><p>Partie <b>${esc(code)}</b>. Choisis un nom qui fera rire la promo.</p><form id="nf"><input class="pseudo" id="nk" maxlength="20" value="${esc(store.get('tm-nick')||'')}" placeholder="Cupidon du compost" required><br><button class="big">C’est parti</button></form></section>`;
- $('#nf').onsubmit=e=>{e.preventDefault();P.nick=$('#nk').value.trim().slice(0,20)||'Anonyme';store.set('tm-nick',P.nick);playerConnect()};
+ let av;try{av=avOk(JSON.parse(store.get('tm-av')))}catch(e){av={k:AVS[Math.floor(Math.random()*AVS.length)],c:Math.floor(Math.random()*AVC.length)}}
+ const draw=()=>{
+  app.innerHTML=`<section class="center join">${logo}<h2>Crée ton profil</h2><p>Partie <b>${esc(code)}</b>. Ton pseudo et ton avatar s’afficheront sur le grand écran : soigne ta première impression.</p>
+  <div class="me">${avatar(av,'avbig')}</div>
+  <form id="nf"><input class="pseudo" id="nk" maxlength="20" value="${esc(P.nick||store.get('tm-nick')||'')}" placeholder="Cupidon du compost" aria-label="Pseudo" required>
+  <div class="lbl">Ton avatar</div><div class="avpick">${AVS.map(k=>`<button type="button" class="avb${k===av.k?' sel':''}" data-k="${k}" aria-label="${k}">${ART[k]()}</button>`).join('')}</div>
+  <div class="lbl">Ta couleur</div><div class="colpick">${AVC.map((c,i)=>`<button type="button" class="colb${i===av.c?' sel':''}" data-c="${i}" style="background:${c}" aria-label="Couleur ${i+1}"></button>`).join('')}</div>
+  <p class="net small"><b>Pense à couper le wifi</b> : le jeu marche en 4G ou 5G.</p>
+  <button class="big">C’est parti</button></form></section>`;
+  const keep=()=>{P.nick=$('#nk').value};
+  document.querySelectorAll('.avb').forEach(b=>b.onclick=()=>{keep();av.k=b.dataset.k;draw()});
+  document.querySelectorAll('.colb').forEach(b=>b.onclick=()=>{keep();av.c=+b.dataset.c;draw()});
+  $('#nf').onsubmit=e=>{e.preventDefault();P.nick=$('#nk').value.trim().slice(0,20)||'Anonyme';P.av=av;store.set('tm-nick',P.nick);store.set('tm-av',JSON.stringify(av));playerConnect()};
+ };
+ draw();
 }
 function pmsg(title,text,cls=''){app.innerHTML=`<section class="center ${cls}">${logo}<h2>${title}</h2>${text?`<p>${text}</p>`:''}</section>`}
 function playerConnect(){
@@ -2666,7 +2701,7 @@ function playerConnect(){
  const link=()=>{
   const c=P.peer.connect(SRV+P.code,{reliable:true});watchPc(c,t=>dbg('Étape 3 : '+t));
   clearTimeout(P.timer);P.timer=setTimeout(()=>{if(!c.open&&!P.ok){pmsg('Connexion difficile','La connexion met trop de temps. Essaie en 4G plutôt qu’en wifi.<br><span class="dbg">'+esc(P.dbgTxt||'')+'</span><br><br><button class="big" id="rt">Réessayer</button>');$('#rt').onclick=start}},30000);
-  c.on('open',()=>{P.conn=c;P.ok=true;clearTimeout(P.timer);c.send({t:'join',pid:P.pid,nick:P.nick})});
+  c.on('open',()=>{P.conn=c;P.ok=true;clearTimeout(P.timer);c.send({t:'join',pid:P.pid,nick:P.nick,av:P.av})});
   c.on('data',pData);
   c.on('close',()=>{if(P.conn===c){P.conn=null;banner(true);setTimeout(()=>{if(!P.conn)link()},2000)}});
  };
@@ -2674,7 +2709,7 @@ function playerConnect(){
 }
 function dbg(t){P.dbgTxt=t;const e=$('#pdbg');if(e)e.textContent=t}
 function banner(on){let e=$('#lost');if(on&&!e){e=document.createElement('div');e.id='lost';e.textContent='Connexion perdue… reconnexion en cours';document.body.appendChild(e)}if(!on&&e)e.remove()}
-function phead(score){return `<div class="ptop">${logo}<span class="pill">${esc(P.nick)}${score!=null?' · '+score+' pts':''}</span></div>`}
+function phead(score){return `<div class="ptop">${logo}<span class="pill pme">${avatar(P.av,'avs')}${esc(P.nick)}${score!=null?' · '+score+' pts':''}</span></div>`}
 function pData(d){
  banner(false);if(!d||typeof d!=='object')return;clearInterval(P.tick);
  if(d.t==='got'){const e=$('#pq');if(e)e.innerHTML=`<div class="sent">${ART.heart()}<b>Réponse envoyée !</b><span>Regarde le grand écran.</span></div>`;return}
