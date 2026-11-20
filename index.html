@@ -2635,7 +2635,7 @@ function hostInit(){
  H.code=String(Math.floor(1000+Math.random()*9000));
  app.innerHTML=`<section class="center">${logo}<h2>Création de la partie…</h2></section>`;
  const peer=new Peer(SRV+H.code,OPTS);H.peer=peer;
- peer.on('open',()=>lobby());
+ peer.on('open',()=>{lobby();clearInterval(H.sync);H.sync=setInterval(()=>{if(H.phase!=='lobby')H.players.forEach(p=>send(p,{...stateFor(p),sync:1}))},2500)});
  peer.on('connection',c=>{H.dbg=(H.dbg||0)+1;const n=H.dbg;watchPc(c,txt=>{H.dbgs=H.dbgs||{};H.dbgs[n]=txt;const e=$('#hdbg');if(e)e.textContent='Diagnostic : '+Object.entries(H.dbgs).map(([k,v])=>'#'+k+' '+v).join(' | ')});c.on('data',d=>hostData(c,d));c.on('close',()=>{const p=H.players.get(c.pid);if(p&&p.conn===c)p.conn=null;if(H.phase==='lobby')lobby();else hostCount()})});
  peer.on('disconnected',()=>{try{peer.reconnect()}catch(e){}});
  peer.on('error',e=>{if(e.type==='unavailable-id'){peer.destroy();hostInit()}else if(e.type==='network'||e.type==='server-error'||e.type==='socket-error'){toast('Connexion au serveur perdue, nouvelle tentative…');setTimeout(()=>{try{peer.reconnect()}catch(x){}},2000)}});
@@ -2771,7 +2771,8 @@ function playerConnect(){
  const link=()=>{
   const c=P.peer.connect(SRV+P.code,{reliable:true});watchPc(c,t=>dbg('Étape 3 : '+t));
   clearTimeout(P.timer);P.timer=setTimeout(()=>{if(!c.open&&!P.ok){pmsg('Connexion difficile','La connexion met trop de temps. Essaie en 4G plutôt qu’en wifi.<br><span class="dbg">'+esc(P.dbgTxt||'')+'</span><br><br><button class="big" id="rt">Réessayer</button>');$('#rt').onclick=start}},30000);
-  c.on('open',()=>{P.conn=c;P.ok=true;clearTimeout(P.timer);c.send({t:'join',pid:P.pid,nick:P.nick,av:P.av})});
+  c.on('open',()=>{P.conn=c;P.ok=true;P.seen=Date.now();P.key=null;clearTimeout(P.timer);c.send({t:'join',pid:P.pid,nick:P.nick,av:P.av})});
+  if(!P.dog)P.dog=setInterval(()=>{if(P.conn&&P.key&&P.key!=='lobby'&&P.key!=='end'&&Date.now()-P.seen>9000){const old=P.conn;P.conn=null;banner(true);try{old.close()}catch(x){}P.seen=Date.now();link()}},2000);
   c.on('data',pData);
   c.on('close',()=>{if(P.conn===c){P.conn=null;banner(true);setTimeout(()=>{if(!P.conn)link()},2000)}});
  };
@@ -2780,8 +2781,11 @@ function playerConnect(){
 function dbg(t){P.dbgTxt=t;const e=$('#pdbg');if(e)e.textContent=t}
 function banner(on){let e=$('#lost');if(on&&!e){e=document.createElement('div');e.id='lost';e.textContent='Connexion perdue… reconnexion en cours';document.body.appendChild(e)}if(!on&&e)e.remove()}
 function phead(score){return `<div class="ptop">${logo}<span class="pill pme">${avatar(P.av,'avs')}${esc(P.nick)}${score!=null?' · '+score+' pts':''}</span>${fsBtn().replace('<span>Plein écran</span>','')}</div>`}
+const keyOf=d=>d.t==='q'?'q'+d.i:d.t==='rev'?'rev'+d.i:d.t==='inter'?'inter'+d.m:d.t;
 function pData(d){
- banner(false);if(!d||typeof d!=='object')return;clearInterval(P.tick);
+ banner(false);if(!d||typeof d!=='object')return;P.seen=Date.now();
+ if(d.t==='got'||d.t==='ping'){}else{const k=keyOf(d);if(d.sync&&k===P.key)return;P.key=k}
+ if(d.t!=='got')clearInterval(P.tick);
  if(d.t==='got'){setTimeout(()=>{if(P.qi!==d.i||!P.last||P.last.t!=='q')return;const e=$('#pq');if(e)e.innerHTML=`<div class="sent">${ART.heart()}<b>Réponse envoyée !</b><span>Regarde le grand écran.</span></div>`},380);return}
  P.last=d;
  if(d.t==='lobby'){app.innerHTML=phead()+`<section class="center">${ART.yaourt().replace('<svg','<svg class="pbig"')}<h2>Tu es dans la salle !</h2><p>Ton pseudo s’affiche sur le grand écran. La partie va bientôt commencer.</p></section>`;return}
