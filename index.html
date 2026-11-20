@@ -2523,6 +2523,7 @@ broken:()=>`<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 28 C4 19 2 
 const bin=c=>`<svg viewBox="0 0 60 70" aria-hidden="true"><rect x="24" y="4" width="12" height="7" rx="2" fill="${c}" stroke="#1b1b1b" stroke-width="2.5"/><rect x="5" y="10" width="50" height="10" rx="3" fill="${c}" stroke="#1b1b1b" stroke-width="2.5"/><path d="M10 20 H50 L46 66 H14Z" fill="${c}" stroke="#1b1b1b" stroke-width="2.5" stroke-linejoin="round"/><path d="M22 30 V56 M30 30 V56 M38 30 V56" stroke="#1b1b1b" stroke-opacity=".25" stroke-width="3" stroke-linecap="round"/></svg>`;
 const flagSvg=c=>`<svg viewBox="0 0 34 40" aria-hidden="true"><rect x="4" y="2" width="4" height="36" rx="2" fill="#1b1b1b"/><path d="M8 4 H30 L24 12 L30 20 H8Z" fill="${c}" stroke="#1b1b1b" stroke-width="2.2" stroke-linejoin="round"/></svg>`;
 
+const VER='2011-7b2e5';
 ART.parfum=()=>svg(sh(46)+`<rect x="88" y="36" width="24" height="18" rx="3" fill="#c9a7ff" ${S}/><rect x="78" y="22" width="44" height="16" rx="5" fill="#8e6bd6" ${S}/><path d="M60 54 H140 Q150 54 150 64 V158 Q150 170 138 170 H62 Q50 170 50 158 V64 Q50 54 60 54Z" fill="#ffd2e6" ${S}/><path d="M62 64 H74 L62 124Z" fill="#fff" opacity=".6"/>`+face(100,104,'smile',14));
 ART.journal=()=>svg(sh(56)+`<path d="M40 48 H150 V166 H54 Q40 166 40 152Z" fill="#fff" ${S}/><rect x="150" y="68" width="14" height="98" fill="#e9eef0" ${S}/><rect x="52" y="60" width="86" height="16" fill="#1b1b1b"/><path d="M52 90 H138 M52 100 H112" stroke="#9aa5ad" stroke-width="5" stroke-linecap="round"/><path d="M52 154 H138" stroke="#9aa5ad" stroke-width="5" stroke-linecap="round"/>`+face(95,116,'smile',12));
 ART.vin=()=>svg(sh(44)+`<rect x="88" y="12" width="24" height="28" rx="4" fill="#c1121f" ${S}/><path d="M88 40 H112 V62 Q142 74 142 100 V164 Q142 174 130 174 H70 Q58 174 58 164 V100 Q58 74 88 62Z" fill="#1f6b3a" ${S}/><rect x="62" y="104" width="76" height="50" rx="5" fill="#f3e3c3" ${S}/>`+face(100,114,'smile',12));
@@ -2643,6 +2644,7 @@ function hostInit(){
 function hostData(c,d){
  if(!d||typeof d!=='object')return;
  if(d.t==='join'){
+  if(d.v!==VER){try{c.send({t:'reload',v:VER})}catch(x){}return}
   const pid=String(d.pid||'').slice(0,40);if(!pid)return;
   const nick=String(d.nick||'').replace(/\s+/g,' ').trim().slice(0,20)||'Anonyme';
   let p=H.players.get(pid);
@@ -2678,7 +2680,7 @@ function lobby(){
  const url=location.origin+location.pathname+'?p='+H.code;
  const ps=[...H.players.values()];
  app.innerHTML=`<div class="lobtop">${fsBtn()}</div><section class="lobby"><div class="lq">${logo}<h1>Scannez pour jouer</h1><p class="rules">Questions basées sur les consignes de tri de la Métropole du Grand Nancy</p><div class="qr">${qrSvg(url)}</div><p class="url">ou allez sur <b>${esc(location.host+location.pathname)}</b><br>code <b class="code">${H.code}</b></p><p class="net"><b>Coupez le wifi</b> et jouez en 4G ou 5G avant de scanner.</p></div>
- <div class="lp"><div class="lh"><h2>${ps.length?ps.length+' joueur'+(ps.length>1?'s':'')+' dans la salle':'En attente des joueurs…'}</h2><button class="big" id="go" ${ps.length?'':'disabled'}>Lancer la partie</button></div><p class="hint small">Astuce : Espace, Entrée ou → font avancer le jeu (une télécommande de présentation marche aussi). F pour le plein écran.</p>
+ <div class="lp"><div class="lh"><h2>${ps.length?ps.length+' joueur'+(ps.length>1?'s':'')+' dans la salle':'En attente des joueurs…'}</h2><button class="big" id="go" ${ps.length?'':'disabled'}>Lancer la partie</button></div><p class="hint small">Version ${VER}. Astuce : Espace, Entrée ou → font avancer le jeu (une télécommande de présentation marche aussi). F pour le plein écran.</p>
  <p class="dbg" id="hdbg"></p><div class="chips">${ps.map(p=>`<span class="nick${p.conn&&p.conn.open?'':' off'}">${avatar(p.av)}${esc(p.nick)}</span>`).join('')||'<p class="hint">Les pseudos apparaîtront ici dès que les téléphones se connectent.</p>'}</div></div></section>`;
  const go=$('#go');if(go)go.onclick=()=>{H.i=0;step()};
 }
@@ -2771,7 +2773,7 @@ function playerConnect(){
  const link=()=>{
   const c=P.peer.connect(SRV+P.code,{reliable:true});watchPc(c,t=>dbg('Étape 3 : '+t));
   clearTimeout(P.timer);P.timer=setTimeout(()=>{if(!c.open&&!P.ok){pmsg('Connexion difficile','La connexion met trop de temps. Essaie en 4G plutôt qu’en wifi.<br><span class="dbg">'+esc(P.dbgTxt||'')+'</span><br><br><button class="big" id="rt">Réessayer</button>');$('#rt').onclick=start}},30000);
-  c.on('open',()=>{P.conn=c;P.ok=true;P.seen=Date.now();P.key=null;clearTimeout(P.timer);c.send({t:'join',pid:P.pid,nick:P.nick,av:P.av})});
+  c.on('open',()=>{P.conn=c;P.ok=true;P.seen=Date.now();P.key=null;clearTimeout(P.timer);c.send({t:'join',pid:P.pid,nick:P.nick,av:P.av,v:VER})});
   if(!P.dog)P.dog=setInterval(()=>{if(P.conn&&P.key&&P.key!=='lobby'&&P.key!=='end'&&Date.now()-P.seen>9000){const old=P.conn;P.conn=null;banner(true);try{old.close()}catch(x){}P.seen=Date.now();link()}},2000);
   c.on('data',pData);
   c.on('close',()=>{if(P.conn===c){P.conn=null;banner(true);setTimeout(()=>{if(!P.conn)link()},2000)}});
@@ -2784,7 +2786,10 @@ function phead(score){return `<div class="ptop">${logo}<span class="pill pme">${
 const keyOf=d=>d.t==='q'?'q'+d.i:d.t==='rev'?'rev'+d.i:d.t==='inter'?'inter'+d.m:d.t;
 function pData(d){
  banner(false);if(!d||typeof d!=='object')return;P.seen=Date.now();
- if(d.t==='got'||d.t==='ping'){}else{const k=keyOf(d);if(d.sync&&k===P.key)return;P.key=k}
+ if(d.t==='reload'){let n=0;try{n=+sessionStorage.getItem('tm-rl')||0}catch(x){}
+  if(n<2){try{sessionStorage.setItem('tm-rl',n+1)}catch(x){}pmsg('Mise à jour…','On charge la dernière version du jeu.');location.replace(location.pathname+'?p='+P.code+'&r='+Date.now());}
+  else pmsg('Versions différentes','Le grand écran et ton téléphone n’ont pas la même version du jeu. Le présentateur doit recharger sa page (Ctrl+F5), puis rescanne le QR code.');return}
+ if(d.t==='got'||d.t==='ping'){}else{try{sessionStorage.removeItem('tm-rl')}catch(x){}const k=keyOf(d);if(d.sync&&k===P.key)return;P.key=k}
  if(d.t!=='got')clearInterval(P.tick);
  if(d.t==='got'){setTimeout(()=>{if(P.qi!==d.i||!P.last||P.last.t!=='q')return;const e=$('#pq');if(e)e.innerHTML=`<div class="sent">${ART.heart()}<b>Réponse envoyée !</b><span>Regarde le grand écran.</span></div>`},380);return}
  P.last=d;
@@ -2819,7 +2824,9 @@ function pData(d){
 
 /* ---------- DÉMARRAGE ---------- */
 const pc=new URLSearchParams(location.search).get('p');
-if(pc&&/^\d{4}$/.test(pc))joinForm(pc);else home();
+const auto=new URLSearchParams(location.search).get('r')&&store.get('tm-nick');
+if(pc&&/^\d{4}$/.test(pc)&&auto){P.code=pc;P.nick=store.get('tm-nick');try{P.av=avOk(JSON.parse(store.get('tm-av')))}catch(e){P.av=avOk(null)}playerConnect()}
+else if(pc&&/^\d{4}$/.test(pc))joinForm(pc);else home();
 
 }
 </script>
