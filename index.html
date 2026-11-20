@@ -158,6 +158,14 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--yel);outline-of
 .sbtn{width:92px;height:92px;border-radius:50%;background:#fff;color:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font:600 13px Fredoka;box-shadow:0 6px 0 rgba(0,0,0,.25)}
 .sbtn svg{width:30px;height:34px}.sbtn.dim{opacity:.35}.sbtn.pick{outline:4px solid var(--yel)}
 .shint{text-align:center;color:#bcd6c9;font-size:14px;margin:12px 0 0}
+.fsb{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.13);color:#fff;border-radius:99px;padding:8px 14px;min-height:40px;font-weight:800;font-size:15px}
+.fsb svg{width:20px;height:20px}.fsb:hover{background:rgba(255,255,255,.22)}
+.ptop .fsb{padding:8px;min-width:40px;justify-content:center}
+.lobtop{display:flex;justify-content:flex-end;margin:-6px 0 4px}
+.keys{color:#9fc2b1;font-size:14px;font-weight:600}
+.hint.small{font-size:14px;margin:16px 0 0}
+.fsj{display:flex;align-items:center;gap:8px;font-weight:700;color:#d9ece2;align-self:flex-start}.fsj input{width:22px;height:22px;accent-color:var(--pink)}
+@media(max-width:860px){.keys{display:none}}
 #lost,#toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--pink);color:#fff;border-radius:99px;padding:10px 18px;font-weight:800;z-index:9}
 #toast{opacity:0;transition:opacity .3s}#toast.on{opacity:1}
 @media(max-width:860px){.hero,.lobby,.stage{grid-template-columns:minmax(0,1fr)}.pic{aspect-ratio:1.6}.gallery{max-width:420px}}
@@ -2587,6 +2595,25 @@ const store={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},s
 function qrSvg(text){const q=qrcode(0,'M');q.addData(text);q.make();return q.createSvgTag({cellSize:8,margin:2,scalable:true})}
 function hasPeer(){if(typeof Peer==='function')return true;app.innerHTML=`<section class="center">${logo}<h2>Connexion impossible</h2><p>Le module de connexion n’a pas pu se charger. Vérifiez la connexion internet puis rechargez la page.</p></section>`;return false}
 
+/* ---------- PLEIN ÉCRAN & CLAVIER ---------- */
+const fsOk=()=>!!(document.fullscreenEnabled||document.webkitFullscreenEnabled);
+const isFs=()=>!!(document.fullscreenElement||document.webkitFullscreenElement);
+function toggleFS(){try{const d=document,e=d.documentElement;if(isFs())(d.exitFullscreen||d.webkitExitFullscreen).call(d);else{const r=(e.requestFullscreen||e.webkitRequestFullscreen).call(e);if(r&&r.catch)r.catch(()=>{})}}catch(x){}}
+const FSI='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const fsBtn=()=>fsOk()?`<button class="fsb" data-fs title="Plein écran (touche F)" aria-label="Plein écran">${FSI}<span>Plein écran</span></button>`:'';
+document.addEventListener('click',e=>{if(e.target.closest('[data-fs]'))toggleFS()});
+document.addEventListener('keydown',e=>{
+ if(e.target.closest&&e.target.closest('input,textarea'))return;
+ if(!H.peer)return;
+ if(e.key==='f'||e.key==='F'){e.preventDefault();toggleFS();return}
+ if([' ','Enter','ArrowRight','PageDown'].includes(e.key)){
+  const b=['#go','#nx','#rv'].map(x=>$(x)).find(x=>x&&!x.disabled);
+  if(b){e.preventDefault();if(document.activeElement&&document.activeElement.blur)document.activeElement.blur();b.click()}
+ }
+});
+let wake=null;async function keepAwake(){try{if('wakeLock' in navigator&&!wake){wake=await navigator.wakeLock.request('screen');wake.addEventListener('release',()=>{wake=null})}}catch(x){}}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&P.nick)keepAwake()});
+
 /* ---------- ACCUEIL ---------- */
 function home(){
  const g=['pizza','yaourt','banane','pile','bouteille','capsule'].map((k,i)=>`<div style="--r:${[-4,3,-2,5,-3,2][i]}deg">${ART[k]()}</div>`).join('');
@@ -2642,13 +2669,13 @@ function stateFor(p){
 }
 function online(){return [...H.players.values()].filter(p=>p.conn&&p.conn.open).length}
 function hostCount(){const e=$('#cnt');if(!e)return;if(H.phase==='q'){const n=[...H.players.values()].filter(p=>p.ans[H.i]).length;e.textContent=`${n} / ${online()} réponses`}else e.textContent=`${online()} joueurs connectés`}
-function hostHead(){return `<div class="top">${logo}<span class="pill" id="cnt"></span><span class="pill">Code ${H.code}</span></div>`}
+function hostHead(){return `<div class="top">${logo}<span class="keys">Espace ou → pour avancer</span><span class="pill" id="cnt"></span><span class="pill">Code ${H.code}</span>${fsBtn()}</div>`}
 function lobby(){
  H.phase='lobby';
  const url=location.origin+location.pathname+'?p='+H.code;
  const ps=[...H.players.values()];
- app.innerHTML=`<section class="lobby"><div class="lq">${logo}<h1>Scannez pour jouer</h1><p class="rules">Questions basées sur les consignes de tri de la Métropole du Grand Nancy</p><div class="qr">${qrSvg(url)}</div><p class="url">ou allez sur <b>${esc(location.host+location.pathname)}</b><br>code <b class="code">${H.code}</b></p><p class="net"><b>Coupez le wifi</b> et jouez en 4G ou 5G avant de scanner.</p></div>
- <div class="lp"><div class="lh"><h2>${ps.length?ps.length+' joueur'+(ps.length>1?'s':'')+' dans la salle':'En attente des joueurs…'}</h2><button class="big" id="go" ${ps.length?'':'disabled'}>Lancer la partie</button></div>
+ app.innerHTML=`<div class="lobtop">${fsBtn()}</div><section class="lobby"><div class="lq">${logo}<h1>Scannez pour jouer</h1><p class="rules">Questions basées sur les consignes de tri de la Métropole du Grand Nancy</p><div class="qr">${qrSvg(url)}</div><p class="url">ou allez sur <b>${esc(location.host+location.pathname)}</b><br>code <b class="code">${H.code}</b></p><p class="net"><b>Coupez le wifi</b> et jouez en 4G ou 5G avant de scanner.</p></div>
+ <div class="lp"><div class="lh"><h2>${ps.length?ps.length+' joueur'+(ps.length>1?'s':'')+' dans la salle':'En attente des joueurs…'}</h2><button class="big" id="go" ${ps.length?'':'disabled'}>Lancer la partie</button></div><p class="hint small">Astuce : Espace, Entrée ou → font avancer le jeu (une télécommande de présentation marche aussi). F pour le plein écran.</p>
  <p class="dbg" id="hdbg"></p><div class="chips">${ps.map(p=>`<span class="nick${p.conn&&p.conn.open?'':' off'}">${avatar(p.av)}${esc(p.nick)}</span>`).join('')||'<p class="hint">Les pseudos apparaîtront ici dès que les téléphones se connectent.</p>'}</div></div></section>`;
  const go=$('#go');if(go)go.onclick=()=>{H.i=0;step()};
 }
@@ -2716,12 +2743,12 @@ function joinForm(code){
   <form id="nf"><input class="pseudo" id="nk" maxlength="20" value="${esc(P.nick||store.get('tm-nick')||'')}" placeholder="Cupidon du compost" aria-label="Pseudo" required>
   <div class="lbl">Ton avatar</div><div class="avpick">${AVS.map(k=>`<button type="button" class="avb${k===av.k?' sel':''}" data-k="${k}" aria-label="${k}">${ART[k]()}</button>`).join('')}</div>
   <div class="lbl">Ta couleur</div><div class="colpick">${AVC.map((c,i)=>`<button type="button" class="colb${i===av.c?' sel':''}" data-c="${i}" style="background:${c}" aria-label="Couleur ${i+1}"></button>`).join('')}</div>
-  <p class="net small"><b>Pense à couper le wifi</b> : le jeu marche en 4G ou 5G.</p>
+  <p class="net small"><b>Pense à couper le wifi</b> : le jeu marche en 4G ou 5G.</p>${fsOk()?`<label class="fsj"><input type="checkbox" id="fsj" checked> Jouer en plein écran</label>`:''}
   <button class="big">C’est parti</button></form></section>`;
   const keep=()=>{P.nick=$('#nk').value};
   document.querySelectorAll('.avb').forEach(b=>b.onclick=()=>{keep();av.k=b.dataset.k;draw()});
   document.querySelectorAll('.colb').forEach(b=>b.onclick=()=>{keep();av.c=+b.dataset.c;draw()});
-  $('#nf').onsubmit=e=>{e.preventDefault();P.nick=$('#nk').value.trim().slice(0,20)||'Anonyme';P.av=av;store.set('tm-nick',P.nick);store.set('tm-av',JSON.stringify(av));playerConnect()};
+  $('#nf').onsubmit=e=>{e.preventDefault();P.nick=$('#nk').value.trim().slice(0,20)||'Anonyme';P.av=av;store.set('tm-nick',P.nick);store.set('tm-av',JSON.stringify(av));keepAwake();if(fsOk()&&!isFs()&&$('#fsj')&&$('#fsj').checked)toggleFS();playerConnect()};
  };
  draw();
 }
@@ -2749,7 +2776,7 @@ function playerConnect(){
 }
 function dbg(t){P.dbgTxt=t;const e=$('#pdbg');if(e)e.textContent=t}
 function banner(on){let e=$('#lost');if(on&&!e){e=document.createElement('div');e.id='lost';e.textContent='Connexion perdue… reconnexion en cours';document.body.appendChild(e)}if(!on&&e)e.remove()}
-function phead(score){return `<div class="ptop">${logo}<span class="pill pme">${avatar(P.av,'avs')}${esc(P.nick)}${score!=null?' · '+score+' pts':''}</span></div>`}
+function phead(score){return `<div class="ptop">${logo}<span class="pill pme">${avatar(P.av,'avs')}${esc(P.nick)}${score!=null?' · '+score+' pts':''}</span>${fsBtn().replace('<span>Plein écran</span>','')}</div>`}
 function pData(d){
  banner(false);if(!d||typeof d!=='object')return;clearInterval(P.tick);
  if(d.t==='got'){setTimeout(()=>{if(P.qi!==d.i||!P.last||P.last.t!=='q')return;const e=$('#pq');if(e)e.innerHTML=`<div class="sent">${ART.heart()}<b>Réponse envoyée !</b><span>Regarde le grand écran.</span></div>`},380);return}
