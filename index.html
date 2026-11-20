@@ -137,6 +137,11 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--yel);outline-of
 .colb{width:44px;height:44px;border-radius:50%;border:3px solid transparent}.colb.sel{border-color:#fff;outline:3px solid var(--yel)}
 .net{background:rgba(255,207,51,.15);border:2px solid var(--yel);border-radius:16px;padding:10px 16px;color:#fff;font-size:18px;margin:4px 0 0}
 .net.small{font-size:15px;margin:6px 0}
+.rows.anim{position:relative;display:block}
+.rows.anim .rk{position:absolute;left:0;right:0;height:76px;padding-block:0;animation:none;transition:top .9s cubic-bezier(.3,1.25,.5,1),opacity .5s}
+.dl{width:2.6em;text-align:right;font-size:.7em;opacity:0;transition:opacity .4s}.dl.on{opacity:1}.dl.up{color:var(--green)}.dl.down{color:var(--pink)}
+.gn.flash{animation:flash .9s ease 2}
+@keyframes flash{50%{transform:scale(1.35);color:#1b8a4a}}
 #lost,#toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--pink);color:#fff;border-radius:99px;padding:10px 18px;font-weight:800;z-index:9}
 #toast{opacity:0;transition:opacity .3s}#toast.on{opacity:1}
 @media(max-width:860px){.hero,.lobby,.stage{grid-template-columns:minmax(0,1fr)}.pic{aspect-ratio:1.6}.gallery{max-width:420px}}
@@ -2652,9 +2657,19 @@ function reveal(){
  const b=$('#rv');b.textContent='Voir le classement';b.className='big';b.onclick=board;
 }
 function board(){
- H.phase='board';const r=ranked().slice(0,5),last=H.i===Q.length-1;
- app.innerHTML=hostHead()+`<section class="board"><h2>Classement</h2><div class="rows">${r.map((p,k)=>`<div class="rk"><span class="pos">${k+1}</span>${avatar(p.av)}<span class="nm">${esc(p.nick)}</span>${p.last?`<span class="gn">+${p.last}</span>`:''}<span class="sc">${p.score}</span></div>`).join('')||'<p class="hint">Aucun joueur.</p>'}</div><button class="big" id="nx">${last?'Voir le podium':'Question suivante'}</button></section>`;
+ H.phase='board';const r=ranked().slice(0,5),last=H.i===Q.length-1,ST=88;
+ const rows=r.map((p,k)=>{const from=Number.isInteger(p.prev)&&p.prev>=0?p.prev:99,start=Math.min(from,5),d=from<99?from-k:0;
+  return `<div class="rk" data-to="${k}" style="top:${start*ST}px;${from<5?'':'opacity:0'}"><span class="pos">${from<5?from+1:'–'}</span>${avatar(p.av)}<span class="nm">${esc(p.nick)}</span>${p.last?`<span class="gn">+${p.last}</span>`:''}<span class="sc" data-a="${p.score-(p.last||0)}" data-b="${p.score}">${p.score-(p.last||0)}</span><span class="dl ${d>0?'up':d<0?'down':''}">${d>0?'▲'+d:d<0?'▼'+(-d):''}</span></div>`}).join('');
+ app.innerHTML=hostHead()+`<section class="board"><h2>Classement</h2><div class="rows anim" style="height:${Math.max(1,r.length)*ST-12}px">${rows||'<p class="hint">Aucun joueur.</p>'}</div><button class="big" id="nx">${last?'Voir le podium':'Question suivante'}</button></section>`;
  hostCount();$('#nx').onclick=()=>{H.i++;step()};
+ const els=[...document.querySelectorAll('.rows.anim .rk')];
+ setTimeout(()=>{
+  els.forEach(e=>{const k=+e.dataset.to;e.style.top=k*ST+'px';e.style.opacity=1;const g=e.querySelector('.gn');if(g)g.classList.add('flash')});
+  const sc=els.map(e=>e.querySelector('.sc')),t0=performance.now(),D=1100;
+  const run=now=>{const f=Math.min(1,(now-t0)/D),ez=1-Math.pow(1-f,3);sc.forEach(x=>{const a=+x.dataset.a,b=+x.dataset.b;x.textContent=Math.round(a+(b-a)*ez)});if(f<1)requestAnimationFrame(run)};
+  requestAnimationFrame(run);
+  setTimeout(()=>els.forEach(e=>{e.querySelector('.pos').textContent=+e.dataset.to+1;e.querySelector('.dl').classList.add('on')}),950);
+ },700);
 }
 function endRes(p){const r=ranked();return{score:p.score,rank:r.indexOf(p)+1,total:r.length}}
 function finish(){
